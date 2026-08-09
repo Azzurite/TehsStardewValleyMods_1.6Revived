@@ -10,6 +10,7 @@ using TehPers.Core.Api.Gameplay;
 using TehPers.Core.Api.Items;
 using TehPers.FishingOverhaul.Api;
 using TehPers.FishingOverhaul.Api.Content;
+using TehPers.FishingOverhaul.Content;
 
 namespace TehPers.FishingOverhaul.Services
 {
@@ -44,7 +45,7 @@ namespace TehPers.FishingOverhaul.Services
             var trashEntries = new List<TrashEntry>();
             var baseAvailabilities = new Dictionary<NamespacedKey, AvailabilityInfo>();
 
-            // --- STEP 1: Parse Base Trash from Data/Fish (Algae, Seaweed) ---
+            // --- STEP 1: Parse Base Trash from Data/Fish ---
             foreach (var (rawKey, data) in fishData)
             {
                 var parts = data.Split('/');
@@ -61,9 +62,8 @@ namespace TehPers.FishingOverhaul.Services
                     continue;
                 }
 
-                var itemKey = this.GetFishKey(rawKey);
+                var itemKey = GetFishKey(rawKey);
 
-                // 1.6 Reading: Clean index handling with "out var" to avoid warnings
                 if (!float.TryParse(parts[10], out var chance))
                 {
                     if (!float.TryParse(parts[9], out chance))
@@ -83,8 +83,8 @@ namespace TehPers.FishingOverhaul.Services
                 var baseInfo = new AvailabilityInfo(chance)
                 {
                     MinFishingLevel = minLevel,
-                    Seasons = this.ParseSeasons(parts[6]),
-                    Weathers = this.ParseWeathers(parts[7]),
+                    Seasons = ParseSeasons(parts[6]),
+                    Weathers = ParseWeathers(parts[7]),
                 };
 
                 var times = parts[5].Split(' ');
@@ -112,24 +112,20 @@ namespace TehPers.FishingOverhaul.Services
 
                     var cleanId = spawnData.ItemId.StartsWith("(O)") ? spawnData.ItemId[3..] : spawnData.ItemId;
 
-                    // If it is NOT a known trash item, skip (to avoid duplicating actual fish here)
                     if (!DefaultFishingSource.extendedTrashIds.Contains(cleanId))
                     {
                         continue;
                     }
 
-                    var itemKey = this.GetFishKey(spawnData.ItemId);
+                    var itemKey = GetFishKey(spawnData.ItemId);
 
-                    // If no base info (e.g., Jellies not in Data/Fish), create default
                     var info = baseAvailabilities.TryGetValue(itemKey, out var baseAvail)
                         ? baseAvail
                         : new AvailabilityInfo(0.1f);
 
-                    // Call the method defined in FishData.cs
-                    var locations = this.GetLocationNames(locName);
+                    var locations = GetLocationNames(locName);
                     info = info with { IncludeLocations = locations };
 
-                    // --- STRICT WATER TYPE ENFORCEMENT ---
                     var waterConstraint = locName switch
                     {
                         "Beach" => WaterTypes.PondOrOcean,
@@ -147,7 +143,6 @@ namespace TehPers.FishingOverhaul.Services
 
                     if (!string.IsNullOrEmpty(spawnData.Condition))
                     {
-                        // Use temporary FishAvailabilityInfo to parse the condition string
                         var tempFishInfo = new FishAvailabilityInfo(info.BaseChance)
                         {
                             StartTime = info.StartTime,
@@ -159,10 +154,8 @@ namespace TehPers.FishingOverhaul.Services
                             When = info.When
                         };
 
-                        // Use corrected parser (handles WATER_DEPTH etc.)
-                        tempFishInfo = this.ParseConditionString(spawnData.Condition, tempFishInfo, locName);
+                        tempFishInfo = ParseConditionString(spawnData.Condition, tempFishInfo, locName);
 
-                        // Convert back to AvailabilityInfo (Trash)
                         info = info with
                         {
                             StartTime = tempFishInfo.StartTime,
@@ -180,7 +173,7 @@ namespace TehPers.FishingOverhaul.Services
 
             // --- STEP 3: Manual Registration for Standard Trash (Missing in 1.6 Data/Locations) ---
             var globalTrashLocations = ImmutableArray.Create(
-                "Town", "Forest", "Beach", "Mountain", "Desert", "Woods", "Sewer", "BugLand", "WitchSwamp", "UndergroundMine",
+                "Town", "Forest", "Beach", "Mountain", "Desert", "DesertFestival", "Woods", "Sewer", "BugLand", "WitchSwamp", "UndergroundMine",
                 "Farm", "Custom_FrontierFarm", "FrontierFarm",
                 "Custom_FerngillRepublicFrontier", "Custom_Ferngill_Frontier", "Ferngill_Frontier", "Custom_FerngillFrontier",
                 "Custom_Ridgeside_RidgesideVillage"
@@ -193,9 +186,9 @@ namespace TehPers.FishingOverhaul.Services
             {
                 trashEntries.Add(new TrashEntry(
                     NamespacedKey.SdvObject(id),
-                    new AvailabilityInfo(0.1d) // Default base chance for standard trash
+                    new AvailabilityInfo(0.1d)
                     {
-                        WaterTypes = WaterTypes.All, // Can be caught in any water
+                        WaterTypes = WaterTypes.All,
                         IncludeLocations = globalTrashLocations
                     }
                 ));
@@ -203,17 +196,18 @@ namespace TehPers.FishingOverhaul.Services
 
             // --- STEP 4: Manual Registration for Jellies (1.6) ---
 
-            // River Jelly: Found in Rivers and Lakes (Freshwater)
+            // River Jelly
             trashEntries.Add(new TrashEntry(
                 NamespacedKey.SdvObject("RiverJelly"),
                 new AvailabilityInfo(0.05d)
                 {
                     WaterTypes = WaterTypes.River | WaterTypes.PondOrOcean,
-                    IncludeLocations = ImmutableArray.Create("Town", "Mountain", "Forest", "Desert", "Woods", "Custom_FrontierFarm", "Custom_FerngillRepublicFrontier")
+                    // ADDED: DesertFestival
+                    IncludeLocations = ImmutableArray.Create("Town", "Mountain", "Forest", "Desert", "DesertFestival", "Woods", "Custom_FrontierFarm", "Custom_FerngillRepublicFrontier")
                 }
             ));
 
-            // Sea Jelly: Found in the Ocean
+            // Sea Jelly
             trashEntries.Add(new TrashEntry(
                 NamespacedKey.SdvObject("SeaJelly"),
                 new AvailabilityInfo(0.05d)
@@ -223,7 +217,7 @@ namespace TehPers.FishingOverhaul.Services
                 }
             ));
 
-            // Cave Jelly: Found in the Mines
+            // Cave Jelly
             trashEntries.Add(new TrashEntry(
                 NamespacedKey.SdvObject("CaveJelly"),
                 new AvailabilityInfo(0.05d)
@@ -233,7 +227,7 @@ namespace TehPers.FishingOverhaul.Services
                 }
             ));
 
-            // --- STEP 5: Ridgeside Village Specials (Hardcoded) ---
+            // --- STEP 5: Ridgeside Village Specials ---
 
             // Village Hero Sculpture
             trashEntries.Add(new TrashEntry(
@@ -284,6 +278,64 @@ namespace TehPers.FishingOverhaul.Services
                 OnCatch = new CatchActions
                 {
                     SetFlags = ImmutableArray.Create("RSV.Sapphire")
+                }
+            });
+
+            // --- STEP 6: Special One-Off Fishing Collectibles ---
+            // These items need MaxFish=0 effects (defined in FishingEffects.cs) to block the
+            // fish pool so only the trash pool is consulted. They live here so they bypass the
+            // fish-chance gating entirely.
+
+            // Iridium Krobus Statue (Forest, south of the sewer outlet)
+            // Vanilla flag: caughtIridiumKrobus — set via mailReceived, checked via HasFlag GSQ.
+            trashEntries.Add(new TrashEntry(
+                NamespacedKey.SdvObject("IridiumKrobus"),
+                new AvailabilityInfo(1.0d)
+                {
+                    IncludeLocations = ImmutableArray.Create("Forest"),
+                    PriorityTier = 20d,
+                    Position = new PositionConstraint
+                    {
+                        Y = new CoordinateConstraint { GreaterThan = 108 }
+                    },
+                    When = new Dictionary<string, string?>
+                    {
+                        ["HasFlag |contains=caughtIridiumKrobus"] = "false",
+                    }.ToImmutableDictionary()
+                }
+            )
+            {
+                OnCatch = new CatchActions
+                {
+                    SetFlags = ImmutableArray.Create("caughtIridiumKrobus")
+                }
+            });
+
+            // Tide Pool Golden Walnut (IslandSouthEast / Pirate's Cove star)
+            // Gated by the TidePoolGoldenWalnut CP token; the custom event handles the actual
+            // nut-collection logic (including MP sync via fishWalnutEvent).
+            trashEntries.Add(new GoldenWalnutEntry(
+                new AvailabilityInfo(1.0d)
+                {
+                    IncludeLocations = ImmutableArray.Create("IslandSouthEast"),
+                    PriorityTier = 20d,
+                    Position = new PositionConstraint
+                    {
+                        X = new CoordinateConstraint { GreaterThanEq = 18, LessThan = 20 },
+                        Y = new CoordinateConstraint { GreaterThanEq = 20, LessThan = 22 },
+                    },
+                    When = new Dictionary<string, string?>
+                    {
+                        ["Hiztaar.FishingOverhaulRevived/TidePoolGoldenWalnut"] = "false",
+                    }.ToImmutableDictionary()
+                }
+            )
+            {
+                OnCatch = new CatchActions
+                {
+                    CustomEvents = ImmutableArray.Create(
+                        new NamespacedKey(this.manifest, "TidePoolGoldenWalnut")
+                    )
                 }
             });
 

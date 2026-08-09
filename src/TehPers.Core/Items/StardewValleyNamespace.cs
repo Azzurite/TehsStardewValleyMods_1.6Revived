@@ -47,7 +47,8 @@ namespace TehPers.Core.Items
         {
             this.itemFactories.Clear();
             foreach (var (key, itemFactory) in StardewValleyNamespace.GetItemFactories(
-                         this.gameAssets
+                         this.gameAssets,
+                         this.monitor
                      ))
             {
                 if (!this.itemFactories.TryAdd(key, itemFactory))
@@ -61,7 +62,8 @@ namespace TehPers.Core.Items
         }
 
         private static IEnumerable<(string key, IItemFactory itemFactory)> GetItemFactories(
-            IAssetProvider assetProvider
+            IAssetProvider assetProvider,
+            IMonitor monitor
         )
         {
             foreach (var quality in Enumerable.Range(Tool.stone, Tool.iridium - Tool.stone + 1))
@@ -141,8 +143,15 @@ namespace TehPers.Core.Items
                 yield return (key, itemFactory);
             }
 
+            // Each content section is wrapped in a try-catch so a failed or slow asset load
+            // during content invalidation cannot abort the iterator and leave itemFactories
+            // partially populated. A partial registry causes TFO to see 0 fish and fall back
+            // to 100% trash, and causes the HUD to display all items as "unknown".
+
             // Boots
-            var boots = assetProvider.Load<Dictionary<string, string>>(@"Data\Boots");
+            Dictionary<string, string> boots;
+            try { boots = assetProvider.Load<Dictionary<string, string>>(@"Data/Boots"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/Boots: {ex.Message}", LogLevel.Warn); boots = new(); }
             foreach (var id in boots.Keys)
             {
                 var key = NamespacedKey.SdvBoots(id).Key;
@@ -150,8 +159,10 @@ namespace TehPers.Core.Items
                 yield return (key, itemFactory);
             }
 
-            // Hats
-            var hats = assetProvider.Load<Dictionary<string, string>>(@"Data\hats");
+            // Hats (was Data\hats — wrong case, broke on Linux)
+            Dictionary<string, string> hats;
+            try { hats = assetProvider.Load<Dictionary<string, string>>(@"Data/Hats"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/Hats: {ex.Message}", LogLevel.Warn); hats = new(); }
             foreach (var id in hats.Keys)
             {
                 var key = NamespacedKey.SdvHat(id).Key;
@@ -159,8 +170,11 @@ namespace TehPers.Core.Items
                 yield return (key, itemFactory);
             }
 
-            // Weapons
-            var weapons = assetProvider.Load<Dictionary<string, WeaponData>>(@"Data\weapons");
+            // Weapons (was Data\weapons — wrong case; a load failure here wiped all Objects
+            // registered after it, including fish items, causing 100% trash everywhere)
+            Dictionary<string, WeaponData> weapons;
+            try { weapons = assetProvider.Load<Dictionary<string, WeaponData>>(@"Data/Weapons"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/Weapons: {ex.Message}", LogLevel.Warn); weapons = new(); }
             foreach (var id in weapons.Keys)
             {
                 var key = NamespacedKey.SdvWeapon(id).Key;
@@ -177,12 +191,13 @@ namespace TehPers.Core.Items
                     default:
                         yield return (key, new SimpleItemFactory(ItemTypes.Weapon, () => new MeleeWeapon(id)));
                         break;
-
                 }
             }
 
             // Furniture
-            var furniture = assetProvider.Load<Dictionary<string, string>>(@"Data\Furniture");
+            Dictionary<string, string> furniture;
+            try { furniture = assetProvider.Load<Dictionary<string, string>>(@"Data/Furniture"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/Furniture: {ex.Message}", LogLevel.Warn); furniture = new(); }
             foreach (var id in furniture.Keys)
             {
                 var key = NamespacedKey.SdvFurniture(id).Key;
@@ -194,8 +209,9 @@ namespace TehPers.Core.Items
             }
 
             // Big Craftables
-            var bigCraftablesInformation =
-                assetProvider.Load<Dictionary<string, BigCraftableData>>(@"Data\BigCraftables");
+            Dictionary<string, BigCraftableData> bigCraftablesInformation;
+            try { bigCraftablesInformation = assetProvider.Load<Dictionary<string, BigCraftableData>>(@"Data/BigCraftables"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/BigCraftables: {ex.Message}", LogLevel.Warn); bigCraftablesInformation = new(); }
             foreach (var id in bigCraftablesInformation.Keys)
             {
                 var key = NamespacedKey.SdvBigCraftable(id).Key;
@@ -206,9 +222,13 @@ namespace TehPers.Core.Items
                 yield return (key, itemFactory);
             }
 
-            // Objects
-            var objects = assetProvider.Load<Dictionary<string, ObjectData>>(@"Data\Objects");
-            var secretNotes = assetProvider.Load<Dictionary<int, string>>(@"Data\SecretNotes");
+            // Objects (fish, rings, etc. — MUST always load even if prior sections fail)
+            Dictionary<string, ObjectData> objects;
+            try { objects = assetProvider.Load<Dictionary<string, ObjectData>>(@"Data/Objects"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/Objects: {ex.Message}", LogLevel.Warn); objects = new(); }
+            Dictionary<int, string> secretNotes;
+            try { secretNotes = assetProvider.Load<Dictionary<int, string>>(@"Data/SecretNotes"); }
+            catch (Exception ex) { monitor.Log($"[TehCore] Failed to load Data/SecretNotes: {ex.Message}", LogLevel.Warn); secretNotes = new(); }
             foreach (var (id, data) in objects)
             {
                 switch (id)

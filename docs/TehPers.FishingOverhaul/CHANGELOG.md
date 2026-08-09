@@ -2,6 +2,19 @@
 
 Changelog for [Teh's Fishing Overhaul Revived].
 
+### 3.3.94
+
+## Added
+
+- Logic for bobbers (treasure, Lead...)
+
+## Fixes 
+
+- Fixed trash regression
+- Attempt fix at multiplayer logic
+- Attempt fix for desert festival fishes
+
+
 ### 3.3.93
 
 ## Fixes 

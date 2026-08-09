@@ -68,7 +68,15 @@ namespace TehPers.FishingOverhaul.Services.Setup
             var font = Game1.smallFont;
             var boxWidth = 0f;
             var lineHeight = (float)font.LineSpacing;
+
             var boxTopLeft = new Vector2(this.hudConfig.TopLeftX, this.hudConfig.TopLeftY);
+
+            // FIX: Shift HUD down if at Desert Festival to prevent overlapping with the Calico Egg Tracker
+            if (farmer.currentLocation?.Name == "DesertFestival")
+            {
+                boxTopLeft.Y += 120f;
+            }
+
             var boxBottomLeft = boxTopLeft;
             var fishingInfo = this.fishingApi.CreateDefaultFishingInfo(farmer);
             var fishChances = this.fishingApi.GetFishChances(fishingInfo)
@@ -158,7 +166,6 @@ namespace TehPers.FishingOverhaul.Services.Setup
                 // 1. Get fish item and name
                 Item? fishItem = null;
 
-                // CORRECTION: 'var' au lieu de 'string' pour satisfaire IDE0007
                 var fishName = this.helper.Translation.Get("text.fish.unknownName", new { key = entryKey.ToString() }).ToString();
 
                 if (this.namespaceRegistry.TryGetItemFactory(entryKey, out var factory))
@@ -249,7 +256,7 @@ namespace TehPers.FishingOverhaul.Services.Setup
             // TODO: use a nicer background
             e.SpriteBatch.Draw(
                 this.whitePixel,
-                new((int)boxTopLeft.X, (int)boxTopLeft.Y, (int)boxWidth, (int)boxBottomLeft.Y),
+                new((int)boxTopLeft.X, (int)boxTopLeft.Y, (int)boxWidth, (int)boxBottomLeft.Y - (int)boxTopLeft.Y),
                 null,
                 new(0, 0, 0, 0.25F),
                 0f,

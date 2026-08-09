@@ -3,6 +3,7 @@ using TehPers.Core.Api.DI;
 using TehPers.FishingOverhaul.Api;
 using TehPers.FishingOverhaul.Api.Content;
 using TehPers.FishingOverhaul.Api.Effects;
+using StardewModdingAPI.Utilities;
 
 namespace TehPers.FishingOverhaul.Services
 {
@@ -11,7 +12,20 @@ namespace TehPers.FishingOverhaul.Services
         public ConditionsCalculator ConditionsCalculator { get; }
         public FishingEffectEntry Entry { get; }
         public IFishingEffect Effect { get; }
-        public bool Enabled { get; private set; }
+
+        // FIX: Split-screen co-op bug — this manager is a single shared instance across all
+        // screens (see FishingApi.fishingEffectManagers), but UpdateEnabled() is called once per
+        // screen per tick with that screen's own farmer. A plain bool let one screen's tick
+        // overwrite another's Enabled state, causing Effect.Apply() to be called twice for the
+        // same player in the same frame — which double-stacks chance-modifying calculators in
+        // ModifyChanceEffectManager. PerScreen keeps Enabled correctly scoped per screen.
+        private readonly PerScreen<bool> enabledPerScreen = new();
+
+        public bool Enabled
+        {
+            get => this.enabledPerScreen.Value;
+            private set => this.enabledPerScreen.Value = value;
+        }
 
         public FishingEffectManager(
             IGlobalKernel kernel,

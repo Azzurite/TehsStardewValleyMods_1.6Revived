@@ -95,8 +95,11 @@ namespace TehPers.FishingOverhaul.Services
             // Vérification de la validité
             if (!this.managedConditions.IsValid)
             {
+                var conditionKeys = string.Join(", ", cpConditions.Keys);
                 monitor.Log(
-                    $"Failed to parse conditions for one of {owner.UniqueID}'s entries: {this.managedConditions.ValidationError}",
+                    $"Failed to parse conditions for one of {owner.UniqueID}'s entries: {this.managedConditions.ValidationError}" +
+                    $" (affected When keys: [{conditionKeys}])" +
+                    $" -- If the condition uses GameStateQuery syntax (e.g. DAY_OF_MONTH, PLAYER_HAS_FLAG), prefix the key with 'Query: ' in the content.json.",
                     LogLevel.Error
                 );
             }

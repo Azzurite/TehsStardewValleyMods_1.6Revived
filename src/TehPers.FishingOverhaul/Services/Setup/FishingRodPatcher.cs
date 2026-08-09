@@ -7,6 +7,7 @@ using Ninject;
 using Ninject.Activation;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.Buildings;
 using StardewValley.Menus;
 using StardewValley.Tools;
 using System;
@@ -86,6 +87,7 @@ namespace TehPers.FishingOverhaul.Services.Setup
         public override void Setup()
         {
             FrenzyQuery.Register();
+            FrenzyQuery.Configuration = this.fishConfig;
 
             this.Patch(
                 AccessTools.Method(typeof(FishingRod), nameof(FishingRod.tickUpdate)),
@@ -152,9 +154,7 @@ namespace TehPers.FishingOverhaul.Services.Setup
             var fishSizePercent = Math.Clamp(sizeFactor * (1.0f + Game1.random.Next(-10, 11) / 100.0f), 0.0f, 1.0f);
             var treasure = !Game1.isFestival() && fishingInfo.User.fishCaught?.Count() > 1 && Game1.random.NextDouble() < this.fishingApi.GetChanceForTreasure(effectiveFishingInfo);
 
-            // FIX: Robust Tackle ID Collection
-            // We use rod.GetTackle() to be safe with modded rods.
-            // We add ALL variants: "692", "(O)692", etc. to ensure any string check passes.
+            // Crash Fix: Filter null tackle using Where clause
             var tackleIds = new List<string>();
             foreach (var tackle in rod.GetTackle())
             {
@@ -173,7 +173,6 @@ namespace TehPers.FishingOverhaul.Services.Setup
                         tackleIds.Add(qId);
                     }
 
-                    // Explicitly strip (O) just in case ItemId still has it
                     if (id.StartsWith("(O)"))
                     {
                         tackleIds.Add(id[3..]);
@@ -495,8 +494,8 @@ namespace TehPers.FishingOverhaul.Services.Setup
                     rod.recordSize = user.caughtFish(itemId, fishSize, fromFishPond, stack);
 
                     // --- FIX: TROUT DERBY GOLDEN TAGS ---
-                    // Rainbow Trout ID is "138" or "(O)138".
-                    // Logic: Summer 20 & 21, Location 'Forest', 33% chance per fish caught.
+                    // Rainbow Trout ID is "138". Check for unqualified form only since ItemId
+                    // strips the "(O)" prefix. Summer 20 & 21 at Cindersap Forest.
                     if ((itemId == "138" || itemId == "(O)138") && !fromFishPond && user.currentLocation is StardewValley.Locations.Forest)
                     {
                         if (Game1.currentSeason == "summer" && (Game1.dayOfMonth == 20 || Game1.dayOfMonth == 21))
@@ -506,8 +505,7 @@ namespace TehPers.FishingOverhaul.Services.Setup
                             {
                                 if (Game1.random.NextDouble() < 0.33)
                                 {
-                                    // CORRECT ID: TroutDerbyTag (Qualified: (O)TroutDerbyTag)
-                                    var tag = StardewValley.ItemRegistry.Create("(O)TroutDerbyTag", 1);
+                                    var tag = ItemRegistry.Create("(O)TroutDerbyTag", 1);
                                     if (user.addItemToInventoryBool(tag))
                                     {
                                         user.currentLocation.playSound("coin");
@@ -618,17 +616,39 @@ namespace TehPers.FishingOverhaul.Services.Setup
                         return true;
                     }
 
+                    // Only the local player's machine should compute catch selection.
+                    // For non-local players (e.g. a farmhand simulated on the host), TFO on the
+                    // farmhand's own machine is already handling this. If we call GetPossibleCatch
+                    // and CatchItem here on the host, CatchItem sets net-synced rod fields
+                    // (pullingOutOfWater, isFishing, fishCaught, whichFish) which propagate to the
+                    // farmhand and corrupt their fishing state, causing 100% trash.
+                    // Returning true lets vanilla's non-local-player path run (which is largely a no-op).
+                    if (!who.IsLocalPlayer)
+                    {
+                        return true;
+                    }
+
                     var bobberTile = patcher.helper.Reflection.GetMethod(__instance, "calculateBobberTile").Invoke<Vector2>();
                     var fromFishPond = location.isTileBuildingFishable((int)bobberTile.X, (int)bobberTile.Y);
 
-                    if (((IFishingApi)patcher.fishingApi).GetFishPondFish(who, bobberTile, true) is { } fishKey)
+                    // For fish pond catches, call CatchFish() directly and use the returned
+                    // SObject as-is. This preserves any quality set by pond enhancement mods
+                    // like Aquarism (DaLion.Ponds), which tracks persistent fish qualities per
+                    // pond and may set quality on the returned object. The old approach called
+                    // GetFishPondFish (which internally calls CatchFish) but then discarded the
+                    // returned item and created a fresh one via factory, losing Aquarism quality.
+                    if (fromFishPond)
                     {
-                        if (patcher.namespaceRegistry.TryGetItemFactory(fishKey, out var factory))
+                        var pondFish = location.buildings
+                            .OfType<FishPond>()
+                            .FirstOrDefault(p => p.isTileFishable(bobberTile))
+                            ?.CatchFish();
+                        if (pondFish is SObject pondFishObj)
                         {
-                            patcher.CatchItem(__instance, new CatchInfo.FishCatch(fishingInfo, new(fishKey, new(0.0)), factory.Create(), -1, false, 0, 0, new(false, TreasureState.None), true));
+                            var fishKey = NamespacedKey.SdvObject(pondFishObj.ParentSheetIndex);
+                            patcher.CatchItem(__instance, new CatchInfo.FishCatch(fishingInfo, new(fishKey, new(0.0)), pondFishObj, -1, false, 0, 0, new(false, TreasureState.None), true));
                             return false;
                         }
-                        patcher.monitor.Log($"No provider for {fishKey} from pond.", LogLevel.Error);
                     }
 
                     var possibleCatch = patcher.fishingApi.GetPossibleCatch(fishingInfo);
@@ -652,11 +672,17 @@ namespace TehPers.FishingOverhaul.Services.Setup
                                 }
 
                                 __instance.hit = true;
+                                // Propagate SetFlagOnCatch from the selected fish entry into the
+                                // fishing info so CustomBobberBar → BobberBar sets the flag after
+                                // a successful catch (important for e.g. Golden Walnut).
+                                var catchFishingInfo = fishEntry.AvailabilityInfo.SetFlagOnCatch is { } catchFlag
+                                    ? fishingInfo with { SetFlagOnCatch = catchFlag }
+                                    : fishingInfo;
                                 Game1.screenOverlayTempSprites.Add(new("LooseSprites\\Cursors", new(612, 1913, 74, 30), 1500f, 1, 0, Game1.GlobalToLocal(Game1.viewport, __instance.bobber.Value + new Vector2(-140f, -160f)), false, false, 1f, 0.005f, Color.White, 4f, 0.075f, 0.0f, 0.0f, true)
                                 {
                                     scaleChangeChange = -0.005f,
                                     motion = new(0.0f, -0.1f),
-                                    endFunction = _ => patcher.StartFishingMinigame(fishingInfo, caughtFish.Item, __instance, fishEntry, fromFishPond),
+                                    endFunction = _ => patcher.StartFishingMinigame(catchFishingInfo, caughtFish.Item, __instance, fishEntry, fromFishPond),
                                     id = (int)9.876543E+08f
                                 });
                                 location.localSound("FishHit");
@@ -767,7 +793,8 @@ namespace TehPers.FishingOverhaul.Services.Setup
                         if (Game1.isFestival() || user.addItemToInventoryBool(item))
                         {
                             patcher.fishingTracker.ActiveFisherData[user] = new(__instance, new FishingState.NotFishing());
-                            __instance.isFishing = true;
+                            // REMOVED: __instance.isFishing = true;
+                            // This was likely causing state desyncs in MP/SplitScreen
                             return false;
                         }
                         Game1.activeClickableMenu = new ItemGrabMenu(new List<Item> { item }, __instance).setEssential(true);

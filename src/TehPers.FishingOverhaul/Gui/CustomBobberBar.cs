@@ -50,7 +50,7 @@ namespace TehPers.FishingOverhaul.Gui
             bool fromFishPond,
             bool isBossFish = false
         )
-            : base(fishItem?.ItemId ?? "142", fishSizePercent, treasure, bobbers, fishingInfo.SetFlagOnCatch, isBossFish)
+            : base(GetBobberWhichFish(fishItem), fishSizePercent, treasure, bobbers, fishingInfo.SetFlagOnCatch, isBossFish)
         {
             _ = helper ?? throw new ArgumentNullException(nameof(helper));
             this.fishConfig = fishConfig ?? throw new ArgumentNullException(nameof(fishConfig));
@@ -131,6 +131,19 @@ namespace TehPers.FishingOverhaul.Gui
                 DartBehavior.Floater => BobberBar.floater,
                 _ => throw new ArgumentOutOfRangeException(nameof(fishTraits), "Invalid dart behavior.")
             };
+        }
+
+        /// <summary>
+        /// Returns a whichFish string safe to pass to BobberBar's constructor.
+        /// SDV 1.6's BobberBar..ctor calls int.Parse(whichFish) internally for sprite lookup.
+        /// Modded fish with non-numeric string IDs (e.g. East Scarp "ES_SomeFish") cause a
+        /// FormatException that enters a continuous error loop and freezes the game.
+        /// Falls back to "142" (Carp) for any non-numeric ID.
+        /// </summary>
+        private static string GetBobberWhichFish(Item? fishItem)
+        {
+            var rawId = fishItem?.ItemId ?? "142";
+            return int.TryParse(rawId, out _) ? rawId : "142";
         }
 
         public override void update(GameTime time)

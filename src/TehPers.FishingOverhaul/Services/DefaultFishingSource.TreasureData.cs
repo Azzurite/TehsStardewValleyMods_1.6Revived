@@ -258,6 +258,11 @@ namespace TehPers.FishingOverhaul.Services
                     new(0.005),
                     Enumerable.Range(529, 6).Select(NamespacedKey.SdvRing).ToImmutableArray()
                 ) {AllowDuplicates = false};
+
+                // NOTE: The Golden Bobber (Willy's Desert Festival Day 3 quest) is delivered as a
+                // direct fish catch, not via a treasure chest — vanilla injects it through
+                // Desert.getFish() which TFO bypasses. It is registered in
+                // DefaultFishingSource.FishData.cs as a PriorityTier=100 fish entry.
             }
         }
     }
