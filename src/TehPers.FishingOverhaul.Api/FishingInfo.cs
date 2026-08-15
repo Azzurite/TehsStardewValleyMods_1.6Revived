@@ -110,8 +110,7 @@ namespace TehPers.FishingOverhaul.Api
         public NamespacedKey? TargetedFish { get; } = User.CurrentTool is FishingRod { } rod
             && rod.GetBait() is { } bait
             && bait.preservedParentSheetIndex.Value is { } targetId
-            && int.TryParse(targetId, out var id)
-            ? NamespacedKey.SdvObject(id)
+            ? NamespacedKey.SdvObject(targetId)
             : null;
 
         /// <summary>
