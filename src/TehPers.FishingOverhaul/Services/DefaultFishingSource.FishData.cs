@@ -298,6 +298,15 @@ namespace TehPers.FishingOverhaul.Services
                         };
                     }
 
+
+                    if (spawnData.FishAreaId is { } areaId && locData.FishAreas.TryGetValue(areaId, out var area) && area.Position is { } aRect)
+                    {
+                        info = info with
+                        {
+                            When = info.When.Add($"Query: BOBBER_IN_RECT {aRect.X} {aRect.Y} {aRect.Width} {aRect.Height}", "true")
+                        };
+                    }
+
                     if (isVanillaLegendary)
                     {
                         // Strip ALL When conditions. Season/location/time/water-type constraints are
