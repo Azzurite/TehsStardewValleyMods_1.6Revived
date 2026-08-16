@@ -239,6 +239,12 @@ namespace TehPers.FishingOverhaul.Services
                         info = info with { WaterTypes = waterConstraint };
                     }
 
+                    // Vanilla always sets the fish to ALL seasons when spawnData.Season is null, even when the base fish already has a specific seasons.
+                    // However, the ParseConditionString method overrides the seasons field if there is a SEASON condition, so we have to set this before.
+                    if (spawnData.Season == null) {
+                        info = info with { Seasons = Seasons.All };
+                    }
+
                     if (!string.IsNullOrEmpty(spawnData.Condition))
                     {
                         info = ParseConditionString(spawnData.Condition, info, locName);
