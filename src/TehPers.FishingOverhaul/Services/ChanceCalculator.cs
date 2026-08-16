@@ -86,7 +86,7 @@ namespace TehPers.FishingOverhaul.Services
                 {
                     // Log success if we are actually boosting a fish
                     // this.monitor.LogOnce($"[TFO Success] Targeted Bait Match for {this.entryKey}! boosting chance.", LogLevel.Info);
-                    chance *= 1.66;
+                    chance *= 10;
                 }
             }
 
