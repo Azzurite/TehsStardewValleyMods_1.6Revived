@@ -280,22 +280,47 @@ namespace TehPers.FishingOverhaul.Services
 
                     if (spawnData.PlayerPosition is { } pRect)
                     {
-                        var xMax = pRect.X + pRect.Width;
-                        var yMax = pRect.Y + pRect.Height;
                         info = info with
                         {
-                            When = info.When
-                                .Add($"Query: PLAYER_TILE_X Current {pRect.X} {xMax}", "true")
-                                .Add($"Query: PLAYER_TILE_Y Current {pRect.Y} {yMax}", "true")
+                            FarmerPosition = new()
+                            {
+                                X = new() { GreaterThanEq = pRect.X, LessThan = pRect.X + pRect.Width },
+                                Y = new() { GreaterThanEq = pRect.Y, LessThan = pRect.Y + pRect.Height }
+                            }
                         };
                     }
 
+                    var positionConstraints = new List<PositionConstraint>();
                     if (spawnData.BobberPosition is { } bRect)
                     {
-                        info = info with
-                        {
-                            When = info.When.Add($"Query: BOBBER_IN_RECT {bRect.X} {bRect.Y} {bRect.Width} {bRect.Height}", "true")
-                        };
+                        positionConstraints.Add(
+                            new()
+                            {
+                                X = new() { GreaterThanEq = bRect.X, LessThan = bRect.X + bRect.Width },
+                                Y = new() { GreaterThanEq = bRect.Y, LessThan = bRect.Y + bRect.Height }
+                            }
+                        );
+                    }
+                    if (spawnData.FishAreaId is { } areaId && locData.FishAreas.TryGetValue(areaId, out var area) && area.Position is { } aRect)
+                    {
+                        positionConstraints.Add(
+                            new()
+                            {
+                                X = new() { GreaterThanEq = aRect.X, LessThan = aRect.X + aRect.Width },
+                                                Y = new() { GreaterThanEq = aRect.Y, LessThan = aRect.Y + aRect.Height }
+                            }
+                        );
+                    }
+                    info = info with { Position = positionConstraints };
+
+                    if (spawnData.MinDistanceFromShore is { } minDist && minDist != -1)
+                    {
+                        info = info with { MinBobberDepth = minDist };
+                    }
+
+                    if (spawnData.MaxDistanceFromShore is { } maxDist && maxDist != -1)
+                    {
+                        info = info with { MaxBobberDepth = maxDist };
                     }
 
                     if (isVanillaLegendary)

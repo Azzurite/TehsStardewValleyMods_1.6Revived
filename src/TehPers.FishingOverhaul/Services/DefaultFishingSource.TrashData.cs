@@ -236,10 +236,10 @@ namespace TehPers.FishingOverhaul.Services
                 {
                     IncludeLocations = ImmutableArray.Create("Custom_Ridgeside_RidgesideVillage"),
                     PriorityTier = 20d,
-                    FarmerPosition = new PositionConstraint
+                    FarmerPosition = new()
                     {
-                        X = new CoordinateConstraint { GreaterThanEq = 145, LessThan = 146 },
-                        Y = new CoordinateConstraint { GreaterThanEq = 69, LessThan = 70 }
+                        X = new() { GreaterThanEq = 145, LessThan = 146 },
+                        Y = new() { GreaterThanEq = 69, LessThan = 70 }
                     },
                     When = new Dictionary<string, string?>
                     {
@@ -262,10 +262,13 @@ namespace TehPers.FishingOverhaul.Services
                 {
                     IncludeLocations = ImmutableArray.Create("Custom_Ridgeside_RidgesideVillage"),
                     PriorityTier = 20d,
-                    Position = new PositionConstraint
+                    Position = new()
                     {
-                        X = new CoordinateConstraint { GreaterThanEq = 60, LessThan = 61 },
-                        Y = new CoordinateConstraint { GreaterThanEq = 55, LessThan = 56 }
+                        new()
+                        {
+                            X = new() { GreaterThanEq = 60, LessThan = 61 },
+                            Y = new() { GreaterThanEq = 55, LessThan = 56 }
+                        }
                     },
                     When = new Dictionary<string, string?>
                     {
@@ -294,9 +297,12 @@ namespace TehPers.FishingOverhaul.Services
                 {
                     IncludeLocations = ImmutableArray.Create("Forest"),
                     PriorityTier = 20d,
-                    Position = new PositionConstraint
+                    Position = new()
                     {
-                        Y = new CoordinateConstraint { GreaterThan = 108 }
+                        new()
+                        {
+                            Y = new() { GreaterThan = 108 }
+                        }
                     },
                     When = new Dictionary<string, string?>
                     {
@@ -319,10 +325,13 @@ namespace TehPers.FishingOverhaul.Services
                 {
                     IncludeLocations = ImmutableArray.Create("IslandSouthEast"),
                     PriorityTier = 20d,
-                    Position = new PositionConstraint
+                    Position = new()
                     {
-                        X = new CoordinateConstraint { GreaterThanEq = 18, LessThan = 20 },
-                        Y = new CoordinateConstraint { GreaterThanEq = 20, LessThan = 22 },
+                        new()
+                        {
+                            X = new() { GreaterThanEq = 18, LessThan = 20 },
+                            Y = new() { GreaterThanEq = 20, LessThan = 22 },
+                        }
                     },
                     When = new Dictionary<string, string?>
                     {

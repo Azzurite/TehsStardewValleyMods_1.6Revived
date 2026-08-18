@@ -20,8 +20,11 @@ namespace TehPers.FishingOverhaul.Services
                         IncludeLocations = ImmutableArray.Create("Town"),
                         Position = new()
                         {
-                            X = new() {LessThan = 30},
-                            Y = new() {LessThan = 30},
+                            new()
+                            {
+                                X = new() {LessThan = 30},
+                                Y = new() {LessThan = 30},
+                            }
                         },
                     },
                 };
@@ -34,16 +37,19 @@ namespace TehPers.FishingOverhaul.Services
                         IncludeLocations = ImmutableArray.Create("IslandSouthEast"),
                         Position = new()
                         {
-                            X = new()
+                            new()
                             {
-                                GreaterThanEq = 18,
-                                LessThan = 20,
-                            },
-                            Y = new()
-                            {
-                                GreaterThanEq = 20,
-                                LessThan = 22,
-                            },
+                                X = new()
+                                {
+                                    GreaterThanEq = 18,
+                                    LessThan = 20,
+                                },
+                                Y = new()
+                                {
+                                    GreaterThanEq = 20,
+                                    LessThan = 22,
+                                }
+                            }
                         },
                         When = new Dictionary<string, string?>
                         {
@@ -60,10 +66,13 @@ namespace TehPers.FishingOverhaul.Services
                         IncludeLocations = ImmutableArray.Create("Forest"),
                         Position = new()
                         {
-                            Y = new()
+                            new()
                             {
-                                GreaterThan = 108,
-                            },
+                                Y = new()
+                                {
+                                    GreaterThan = 108,
+                                }
+                            }
                         },
                         When = new Dictionary<string, string?>
                         {
@@ -94,7 +103,7 @@ namespace TehPers.FishingOverhaul.Services
                     Conditions = new()
                     {
                         IncludeLocations = ImmutableArray.Create("IslandNorth"),
-                        Position = new() {Y = new() {GreaterThan = 72}},
+                        Position = new() {new() { Y = new() {GreaterThan = 72} }},
                         When = new Dictionary<string, string?>
                         {
                             ["HasFlag |contains=gotSecretIslandNPainting"] = "false",
@@ -110,8 +119,11 @@ namespace TehPers.FishingOverhaul.Services
                         IncludeLocations = ImmutableArray.Create("IslandNorth"),
                         Position = new()
                         {
-                            X = new() {LessThan = 4},
-                            Y = new() {LessThan = 35},
+                            new()
+                            {
+                                X = new() {LessThan = 4},
+                                Y = new() {LessThan = 35},
+                            }
                         },
                         When = new Dictionary<string, string?>
                         {

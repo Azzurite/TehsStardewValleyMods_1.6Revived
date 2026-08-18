@@ -139,7 +139,7 @@ namespace TehPers.FishingOverhaul.Api.Content
         /// <summary>
         /// Constraints on the bobber's position on the map when fishing.
         /// </summary>
-        public PositionConstraint Position { get; init; } = new();
+        public List<PositionConstraint> Position { get; init; } = new();
 
         /// <summary>
         /// Constraints on the farmer's position on the map when fishing.
@@ -256,10 +256,11 @@ namespace TehPers.FishingOverhaul.Api.Content
             }
 
             // Verify position is valid
-            if (!this.Position.Matches(fishingInfo.BobberPosition))
+            if (Position.Any() && Position.All(constraint => !constraint.Matches(fishingInfo.BobberPosition)))
             {
                 return false;
             }
+
 
             // Verify farmer's position is valid
             if (!this.FarmerPosition.Matches(fishingInfo.User.getStandingPosition() / 64f))
