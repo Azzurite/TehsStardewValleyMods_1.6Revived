@@ -97,8 +97,6 @@ namespace TehPers.FishingOverhaul.Services
             this.CreatedDefaultFishingInfo += this.ApplyEmpOverrides;
             this.CreatedDefaultFishingInfo += FishingApi.ApplyMagicBait;
 
-            this.PreparedFishChances += FishingApi.ApplyCuriosityLure;
-
             this.reloadRequested = true;
         }
 
@@ -293,18 +291,6 @@ namespace TehPers.FishingOverhaul.Services
             };
         }
 
-        private static void ApplyCuriosityLure(object? sender, PreparedFishEventArgs e)
-        {
-            if (e.FishingInfo.Bobber != NamespacedKey.SdvObject(856))
-            {
-                return;
-            }
-
-            e.FishChances = e.FishChances.ToWeighted(
-                    weightedValue => weightedValue.Weight >= 0 ? Math.Log(weightedValue.Weight + 1) : 0,
-                    weightedValue => weightedValue.Value
-                ).ToList();
-        }
 
         /// <inheritdoc/>
         public override FishingInfo CreateDefaultFishingInfo(Farmer farmer)

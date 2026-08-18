@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
+using TehPers.Core.Api.Items;
 
 namespace TehPers.FishingOverhaul.Api.Content
 {
@@ -27,6 +28,12 @@ namespace TehPers.FishingOverhaul.Api.Content
         public double PriorityTier { get; init; } = 0d;
 
         /// <summary>
+        /// By how much the BaseChance should be increased when a curiosity lure is equipped.
+        /// </summary>
+        [DefaultValue(0d)]
+        public double CuriosityLureBuff = 0d;
+
+        /// <summary>
         /// Gets the weighted chance of this being caught, if any. This does not test the
         /// conditions in <see cref="AvailabilityConditions.When"/>.
         /// </summary>
@@ -46,8 +53,8 @@ namespace TehPers.FishingOverhaul.Api.Content
         /// <returns>The weighted chance of this being caught.</returns>
         public virtual double GetChance(FishingInfo fishingInfo)
         {
-            // Calculate spawn weight
-            return this.BaseChance;
+            var usingCuriosityLure = fishingInfo.Bobber == NamespacedKey.SdvObject(856);
+            return this.BaseChance + (usingCuriosityLure ? CuriosityLureBuff : 0);
         }
     }
 }

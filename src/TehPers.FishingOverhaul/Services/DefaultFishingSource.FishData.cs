@@ -298,6 +298,10 @@ namespace TehPers.FishingOverhaul.Services
                         };
                     }
 
+                    if (spawnData.CuriosityLureBuff is { } buff && buff != -1) {
+                        info = info with { CuriosityLureBuff = buff };
+                    }
+
                     if (isVanillaLegendary)
                     {
                         // Strip ALL When conditions. Season/location/time/water-type constraints are
