@@ -300,10 +300,11 @@ namespace TehPers.FishingOverhaul.Services
                 return;
             }
 
+            var max = e.FishChances.Max(c => c.Weight);
             e.FishChances = e.FishChances.ToWeighted(
-                    weightedValue => weightedValue.Weight >= 0 ? Math.Log(weightedValue.Weight + 1) : 0,
+                    weightedValue => weightedValue.Weight >= 0 ? (max * 3 - weightedValue.Weight) : 0,
                     weightedValue => weightedValue.Value
-                ).ToList();
+            ).ToList();
         }
 
         /// <inheritdoc/>
